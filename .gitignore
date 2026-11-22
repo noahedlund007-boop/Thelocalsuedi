@@ -1,0 +1,6 @@
+assets/originals/
+*.zip
+__pycache__/
+.DS_Store
+._*
+tools/contact-sheets/

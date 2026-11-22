@@ -1,0 +1,16 @@
+# thelocalsuedi.
+> Personal website of Noah Edlund (creative name: thelocalsuedi.), a photographer and filmmaker based in Hälsingland, Sweden. Svenska: fotograf och filmare i Hälsingland.
+
+Work: event photography, portraits, live music photography, event films, documentary, informational and company videos, and personal projects (street photography, street portraits, life on film, documentary). Available for assignments for local businesses, events and people.
+
+- English: https://YOUR-USERNAME.github.io/YOUR-REPO/en/index.html
+- Svenska: https://YOUR-USERNAME.github.io/YOUR-REPO/sv/index.html
+- Work: https://YOUR-USERNAME.github.io/YOUR-REPO/en/work.html
+- Personal projects: https://YOUR-USERNAME.github.io/YOUR-REPO/en/projects.html
+- Video: https://YOUR-USERNAME.github.io/YOUR-REPO/en/video.html
+- About and contact: https://YOUR-USERNAME.github.io/YOUR-REPO/en/about.html
+- Instagram: https://www.instagram.com/thelocalsuedi/
+- YouTube: https://www.youtube.com/@thelocalsuedi
+- TikTok: https://www.tiktok.com/@thelocalsuedi
+- LinkedIn: https://www.linkedin.com/in/noah-edlund-1a8960258
+- Email: Noahedlund007@gmail.com
