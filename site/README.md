@@ -8,16 +8,21 @@ Static site in two languages: `/en/` and `/sv/`. The start page `index.html` sen
 4. Add `assets/images/og/og-image.jpg` (1200x630), the picture shown when the link is shared.
 5. Search Console: add the site and submit `sitemap.xml`. Put the site link in your Instagram, YouTube and TikTok bios.
 
-## Fast-loading pictures
-1. Put your full-size originals in `assets/originals/` using the same sub-path as the list below (e.g. `assets/originals/work/events/events-01.jpg`).
-2. `pip install pillow`, then `python3 tools/optimize.py`. It writes the web sizes into `assets/images/` (JPG and WebP at 1000 and 2000 px) and removes location data (EXIF) from the pictures.
-3. `python3 build.py` again. Pages use the small WebP files automatically where they exist; frames already reserve their space, so nothing jumps while loading.
+## Photos from Google Drive
+1. Download the Drive folder "Hemsida bilder." (right-click > Download), unzip it into `assets/originals/`.
+2. `pip install pillow`, then `python3 tools/import_photos.py`, then `python3 build.py`.
+3. The folder decides the gallery; file names are never shown. Pictures are NOT sorted by sharpness or contrast. Within a gallery they stay grouped by series (the file-name prefix) and follow the number at the end of each file name. Series are alphabetical unless you list your own order in `data/order.json` (see the top of tools/import_photos.py).
+4. `data/photos.json` is the single source of truth for what is shown and in which order. Edit it by hand if you want a different order.
+5. Originals stay untouched in `assets/originals/` (git-ignored). The generated web sizes go to `assets/images/`.
 
-## Lightbox
-Click a picture to open it large. Arrows, arrow keys, swipe to browse; Esc, the cross or a click outside closes. It shows Date, Gear and About.
+## Menu hover pictures
+Each gallery shows a picture when you hover its name in the lists. Put your own `assets/images/<gallery>/cover.jpg` (for example `assets/images/work/portraits/cover.jpg`) to choose it. Without a file, `data/covers.json` ({"work/portraits": "work/portraits/portraits-005"}) or else the first picture is used.
 
-## Info on every picture and film
-Defaults: gear is `GEAR` in build.py. To set real info, add the file to `INFO` in build.py (key = file path from the lists below), then run `python3 build.py`.
+## Film thumbnails
+Order of choice: your own frame `assets/images/video/<id>.jpg` (ids in the list below; `python3 tools/make_posters.py` takes the first frame from videos in `assets/originals/video/`), otherwise a photo from the same event/band in your gallery (bike-festival, uf-gavleborg, blessed-insanity, electric-feelgood; change with `data/thumbs.json`), otherwise a typographic card. Nothing is invented.
+
+## Masonry galleries and lightbox
+Pictures keep their proportions and fill 2, 3 or 4 columns depending on screen width, in the order of `data/photos.json`. Click a picture to open it large; arrows, arrow keys or swipe to browse; Esc closes.
 
 ## Availability line
 `AVAILABLE` in build.py (one text per language). Empty text hides the line.
@@ -29,116 +34,27 @@ Off by default. GoatCounter's hosted free plan is for non-commercial use; paid a
 Add one line to `PROJECTS` in build.py, run it, then add pictures at the listed paths.
 
 ## Images (assets/images/)
-- `home/intro-poster.jpg`
 - `og/og-image.jpg`
-- `work/events/cover.jpg`
-- `work/portraits/cover.jpg`
-- `work/live-music/cover.jpg`
-- `work/events/events-01.jpg`
-- `work/events/events-02.jpg`
-- `work/events/events-03.jpg`
-- `work/events/events-04.jpg`
-- `work/events/events-05.jpg`
-- `work/events/events-06.jpg`
-- `work/events/events-07.jpg`
-- `work/events/events-08.jpg`
-- `work/events/events-09.jpg`
-- `work/events/events-10.jpg`
-- `work/events/events-11.jpg`
-- `work/events/events-12.jpg`
-- `work/events/events-13.jpg`
-- `work/events/events-14.jpg`
-- `work/portraits/portraits-01.jpg`
-- `work/portraits/portraits-02.jpg`
-- `work/portraits/portraits-03.jpg`
-- `work/portraits/portraits-04.jpg`
-- `work/portraits/portraits-05.jpg`
-- `work/portraits/portraits-06.jpg`
-- `work/portraits/portraits-07.jpg`
-- `work/portraits/portraits-08.jpg`
-- `work/portraits/portraits-09.jpg`
-- `work/portraits/portraits-10.jpg`
-- `work/portraits/portraits-11.jpg`
-- `work/portraits/portraits-12.jpg`
-- `work/portraits/portraits-13.jpg`
-- `work/portraits/portraits-14.jpg`
-- `work/live-music/live-music-01.jpg`
-- `work/live-music/live-music-02.jpg`
-- `work/live-music/live-music-03.jpg`
-- `work/live-music/live-music-04.jpg`
-- `work/live-music/live-music-05.jpg`
-- `work/live-music/live-music-06.jpg`
-- `work/live-music/live-music-07.jpg`
-- `work/live-music/live-music-08.jpg`
-- `work/live-music/live-music-09.jpg`
-- `work/live-music/live-music-10.jpg`
-- `work/live-music/live-music-11.jpg`
-- `work/live-music/live-music-12.jpg`
-- `work/live-music/live-music-13.jpg`
-- `work/live-music/live-music-14.jpg`
-- `projects/first-roll/cover.jpg`
-- `projects/street-portraits/cover.jpg`
-- `projects/street-photography/cover.jpg`
-- `projects/overstyr/cover.jpg`
-- `projects/first-roll/first-roll-01.jpg`
-- `projects/first-roll/first-roll-02.jpg`
-- `projects/first-roll/first-roll-03.jpg`
-- `projects/first-roll/first-roll-04.jpg`
-- `projects/first-roll/first-roll-05.jpg`
-- `projects/first-roll/first-roll-06.jpg`
-- `projects/first-roll/first-roll-07.jpg`
-- `projects/first-roll/first-roll-08.jpg`
-- `projects/first-roll/first-roll-09.jpg`
-- `projects/first-roll/first-roll-10.jpg`
-- `projects/first-roll/first-roll-11.jpg`
-- `projects/first-roll/first-roll-12.jpg`
-- `projects/street-portraits/street-portraits-01.jpg`
-- `projects/street-portraits/street-portraits-02.jpg`
-- `projects/street-portraits/street-portraits-03.jpg`
-- `projects/street-portraits/street-portraits-04.jpg`
-- `projects/street-portraits/street-portraits-05.jpg`
-- `projects/street-portraits/street-portraits-06.jpg`
-- `projects/street-portraits/street-portraits-07.jpg`
-- `projects/street-portraits/street-portraits-08.jpg`
-- `projects/street-portraits/street-portraits-09.jpg`
-- `projects/street-portraits/street-portraits-10.jpg`
-- `projects/street-portraits/street-portraits-11.jpg`
-- `projects/street-portraits/street-portraits-12.jpg`
-- `projects/street-photography/street-photography-01.jpg`
-- `projects/street-photography/street-photography-02.jpg`
-- `projects/street-photography/street-photography-03.jpg`
-- `projects/street-photography/street-photography-04.jpg`
-- `projects/street-photography/street-photography-05.jpg`
-- `projects/street-photography/street-photography-06.jpg`
-- `projects/street-photography/street-photography-07.jpg`
-- `projects/street-photography/street-photography-08.jpg`
-- `projects/street-photography/street-photography-09.jpg`
-- `projects/street-photography/street-photography-10.jpg`
-- `projects/street-photography/street-photography-11.jpg`
-- `projects/street-photography/street-photography-12.jpg`
-- `projects/overstyr/overstyr-01.jpg`
-- `projects/overstyr/overstyr-02.jpg`
-- `projects/overstyr/overstyr-03.jpg`
-- `projects/overstyr/overstyr-04.jpg`
-- `projects/overstyr/overstyr-05.jpg`
-- `projects/overstyr/overstyr-06.jpg`
-- `projects/overstyr/overstyr-07.jpg`
-- `projects/overstyr/overstyr-08.jpg`
-- `projects/overstyr/overstyr-09.jpg`
-- `projects/overstyr/overstyr-10.jpg`
-- `projects/overstyr/overstyr-11.jpg`
-- `projects/overstyr/overstyr-12.jpg`
-- `film/events/event-film-01-poster.jpg`
-- `film/events/event-film-02-poster.jpg`
-- `film/documentary/yt-arH-8EXF31E-poster.jpg`
-- `film/informational/informational-01-poster.jpg`
-- `film/informational/informational-02-poster.jpg`
+- `work/portraits/portraits-001-960.webp`
+- `work/events/events-001-960.webp`
+- `work/live-music/live-music-001-960.webp`
+- `work/commercial/commercial-001-960.webp`
+- `projects/life-on-film/life-on-film-001-960.webp`
+- `projects/street-portraits/street-portraits-001-960.webp`
+- `projects/street-photography/street-photography-001-960.webp`
+- `projects/documentary/documentary-001-960.webp`
+- `video/uf-gavleborg.jpg`
+- `video/bike-festival.jpg`
+- `video/lake-jump.jpg`
+- `video/redbull.jpg`
+- `video/redbull-bts.jpg`
+- `video/rehnstroms.jpg`
+- `video/blessed-insanity.jpg`
+- `video/electric-feelgood.jpg`
+- `video/fjarilshuset.jpg`
+- `video/slotboythim.jpg`
 - `about/noah-portrait.jpg`
 - `menu/menu-bg.jpg`
 
 ## Videos (assets/videos/)
-- `intro/intro-loop.mp4`
-- `film/events/event-film-01.mp4`
-- `film/events/event-film-02.mp4`
-- `film/informational/informational-01.mp4`
-- `film/informational/informational-02.mp4`
+

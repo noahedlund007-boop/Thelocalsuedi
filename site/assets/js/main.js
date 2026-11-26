@@ -16,7 +16,7 @@
   menu.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { if (a.getAttribute('href').indexOf('#contact') > -1 && location.pathname.indexOf('about') > -1) setMenu(false); }); });
 
   // missing media -> neutral placeholder
-  function miss(el) { var b = el.closest('.frame,.vid,.hero'); if (b) b.classList.add('missing'); }
+  function miss(el) { var b = el.closest('.frame,.vid,.hero,.vframe'); if (b) b.classList.add('missing'); }
   document.addEventListener('error', function (e) { var t = e.target; if (t.tagName === 'IMG' || t.tagName === 'SOURCE') miss(t); }, true);
   document.querySelectorAll('img').forEach(function (i) { if (i.complete && i.naturalWidth === 0) miss(i); });
 
@@ -39,28 +39,28 @@
       b.replaceWith(f);
     });
   });
-  // info cards: tap/click toggles, hover handled in CSS; keep the card inside the screen
-  var infos = document.querySelectorAll('.info');
-  function fit(info) {
-    var card = info.querySelector('.info-card'); card.style.translate = '0 0';
-    var r = card.getBoundingClientRect(), vw = document.documentElement.clientWidth, dx = 0;
-    if (r.left < 8) dx = 8 - r.left; else if (r.right > vw - 8) dx = vw - 8 - r.right;
-    card.style.translate = dx + 'px 0';
-  }
-  infos.forEach(function (info) {
-    var b = info.querySelector('.info-btn');
-    ['mouseenter', 'focusin'].forEach(function (ev) { info.addEventListener(ev, function () { fit(info); }); });
-    b.addEventListener('click', function (ev) {
-      ev.stopPropagation();
-      var o = !info.classList.contains('open');
-      infos.forEach(function (i) { i.classList.remove('open'); i.querySelector('.info-btn').setAttribute('aria-expanded', 'false'); });
-      info.classList.toggle('open', o); b.setAttribute('aria-expanded', String(o)); if (o) fit(info);
+  // masonry: pictures keep their own proportions; each one goes into the shortest column, in the order of the page
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.masonry'));
+  function layout(box) {
+    var figs = box._f || (box._f = Array.prototype.slice.call(box.querySelectorAll('.f')).sort(function (a, b) { return a.dataset.i - b.dataset.i; }));
+    var cs = getComputedStyle(box), w = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    var n = w >= 1400 ? 4 : w >= 900 ? 3 : 2, gap = w >= 700 ? 14 : 8;
+    if (box._n === n && box._g === gap) return; box._n = n; box._g = gap;
+    box.classList.add('on'); box.style.setProperty('--mg', gap + 'px');
+    var cw = (w - gap * (n - 1)) / n, cols = [], hs = [], frag = document.createDocumentFragment();
+    for (var c = 0; c < n; c++) { var col = document.createElement('div'); col.className = 'mcol'; cols.push(col); hs.push(0); frag.appendChild(col); }
+    figs.forEach(function (f) {
+      var r = parseFloat(f.style.getPropertyValue('--r')) || 1.5, k = 0;
+      for (var c = 1; c < n; c++) if (hs[c] < hs[k] - 1) k = c;
+      cols[k].appendChild(f); hs[k] += cw / r + gap;
     });
-  });
-  document.addEventListener('click', function (e) { if (!e.target.closest('.info')) infos.forEach(function (i) { i.classList.remove('open'); i.querySelector('.info-btn').setAttribute('aria-expanded', 'false'); }); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') infos.forEach(function (i) { i.classList.remove('open'); }); });
+    while (box.firstChild) box.removeChild(box.firstChild); box.appendChild(frag);
+  }
+  boxes.forEach(layout);
+  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { boxes.forEach(layout); }, 150); });
+
   // lightbox: click a picture to see it large, browse with arrows / keys / swipe
-  var figs = Array.prototype.slice.call(document.querySelectorAll('.f'));
+  var figs = Array.prototype.slice.call(document.querySelectorAll('.f')).sort(function (a, b) { return a.dataset.i - b.dataset.i; });
   if (figs.length) {
     var sv = document.documentElement.lang === 'sv';
     var lab = sv ? { x: 'Stäng', p: 'Föregående bild', n: 'Nästa bild', d: 'Bildvisning', ph: 'Bilden är inte tillagd än' }
@@ -69,18 +69,17 @@
     lb.className = 'lb'; lb.hidden = true; lb.setAttribute('role', 'dialog'); lb.setAttribute('aria-modal', 'true'); lb.setAttribute('aria-label', lab.d);
     lb.innerHTML = '<button class="lb-x" type="button" aria-label="' + lab.x + '">&times;</button><button class="lb-nav lb-prev" type="button" aria-label="' + lab.p + '">&#8249;</button>' +
       '<button class="lb-nav lb-next" type="button" aria-label="' + lab.n + '">&#8250;</button><figure class="lb-fig"><div class="lb-stage"><img alt=""><div class="lb-ph"></div></div>' +
-      '<figcaption><span class="lb-count" aria-live="polite"></span><dl class="lb-info"></dl></figcaption></figure>';
+      '<figcaption><span class="lb-count" aria-live="polite"></span></figcaption></figure>';
     document.body.appendChild(lb);
-    var limg = lb.querySelector('.lb-stage img'), lph = lb.querySelector('.lb-ph'), lcount = lb.querySelector('.lb-count'), linfo = lb.querySelector('.lb-info');
+    var limg = lb.querySelector('.lb-stage img'), lph = lb.querySelector('.lb-ph'), lcount = lb.querySelector('.lb-count');
     var btns = [lb.querySelector('.lb-x'), lb.querySelector('.lb-prev'), lb.querySelector('.lb-next')];
     var cur = 0, opener = null, isOpen = false;
     function show(i) {
       cur = (i + figs.length) % figs.length;
       var f = figs[cur], im = f.querySelector('img'), fr = f.querySelector('.frame');
-      if (im.complete && im.naturalWidth > 0 && !fr.classList.contains('missing')) { limg.hidden = false; lph.hidden = true; limg.src = im.src; limg.alt = im.alt; }
+      if (im.complete && im.naturalWidth > 0 && !fr.classList.contains('missing')) { limg.hidden = false; lph.hidden = true; limg.src = im.dataset.full || im.src; limg.alt = im.alt; }
       else { limg.hidden = true; lph.hidden = false; lph.textContent = lab.ph + ': ' + f.querySelector('.note').textContent.replace('Add image', '').trim(); }
       lcount.textContent = (cur + 1) + ' / ' + figs.length;
-      var dl = f.querySelector('.info-card dl'); linfo.innerHTML = dl ? dl.innerHTML : '';
       [cur - 1, cur + 1].forEach(function (n) { var g = figs[(n + figs.length) % figs.length].querySelector('img'); if (g && g.src) new Image().src = g.src; });
     }
     function open(i) { opener = document.activeElement; isOpen = true; lb.hidden = false; document.body.style.overflow = 'hidden'; show(i); requestAnimationFrame(function () { lb.classList.add('on'); }); btns[0].focus(); }
@@ -105,6 +104,22 @@
     lb.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
     lb.addEventListener('touchend', function (e) { if (sx === null) return; var dx = e.changedTouches[0].clientX - sx; sx = null; if (Math.abs(dx) > 50) show(cur + (dx < 0 ? 1 : -1)); });
   }
+  // film cards: player loads only after Play; description opens on demand
+  document.querySelectorAll('.vplay').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var f = document.createElement('iframe'), id = b.dataset.id;
+      f.src = b.dataset.k === 'yt' ? 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0' : 'https://www.instagram.com/reel/' + id + '/embed';
+      f.title = b.dataset.title; f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen'; f.allowFullscreen = true;
+      b.parentNode.classList.add('playing'); b.replaceWith(f);
+    });
+  });
+  document.querySelectorAll('.vmore').forEach(function (b) {
+    var sv = document.documentElement.lang === 'sv', card = b.closest('.vc');
+    b.addEventListener('click', function () {
+      var o = !card.classList.contains('open'); card.classList.toggle('open', o); b.setAttribute('aria-expanded', String(o));
+      b.textContent = o ? (sv ? 'Dölj beskrivning' : 'Hide description') : (sv ? 'Läs beskrivning' : 'Read description');
+    });
+  });
   var hv = document.querySelector('.hero video');
   if (hv && matchMedia('(prefers-reduced-motion:reduce)').matches) { hv.removeAttribute('autoplay'); hv.pause(); }
 })();

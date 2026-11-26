@@ -39,16 +39,15 @@ Off by default. GoatCounter's hosted free plan is for non-commercial use; paid a
 Add one line to `PROJECTS` in build.py, run it, then add pictures at the listed paths.
 
 ## Images (assets/images/)
-- `home/intro-poster.jpg`
 - `og/og-image.jpg`
-- `work/portraits/portraits-004.jpg`
-- `work/events/events-120.jpg`
-- `work/live-music/live-music-012.jpg`
-- `work/commercial/commercial-005.jpg`
-- `projects/life-on-film/life-on-film-075.jpg`
-- `projects/street-portraits/street-portraits-016.jpg`
-- `projects/street-photography/street-photography-040.jpg`
-- `projects/documentary/documentary-040.jpg`
+- `work/portraits/portraits-001.jpg`
+- `work/events/events-001.jpg`
+- `work/live-music/live-music-001.jpg`
+- `work/commercial/commercial-001.jpg`
+- `projects/life-on-film/life-on-film-001.jpg`
+- `projects/street-portraits/street-portraits-001.jpg`
+- `projects/street-photography/street-photography-001.jpg`
+- `projects/documentary/documentary-001.jpg`
 - `video/uf-gavleborg.jpg`
 - `video/bike-festival.jpg`
 - `video/lake-jump.jpg`
@@ -63,4 +62,4 @@ Add one line to `PROJECTS` in build.py, run it, then add pictures at the listed 
 - `menu/menu-bg.jpg`
 
 ## Videos (assets/videos/)
-- `intro/intro-loop.mp4`
+

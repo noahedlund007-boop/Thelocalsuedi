@@ -77,15 +77,17 @@ LANG = sys.argv[1]
 OUT = os.path.join(ROOT, LANG); os.makedirs(OUT, exist_ok=True)
 P = "../"; A = P + "assets/"
 def L(en, sv): return en if LANG == "en" else sv
+PH = {}   # real photos, written by tools/import_photos.py
+if os.path.exists(os.path.join(ROOT, "data", "photos.json")): PH = json.load(open(os.path.join(ROOT, "data", "photos.json"), encoding="utf-8"))["galleries"]
 
 # ---------------- CONTENT ----------------
-WORK = [("events", "Events"), ("portraits", "Portraits"), ("live-music", "Live Music")]
+WORK = [("portraits", "Portraits"), ("events", "Events"), ("live-music", "Live Music"), ("commercial", "Commercial")]
 # (slug, title, group, year, place, intro) - add a line to add a project
 PROJECTS = [
-    ("first-roll", "Untitled", "Life on Film", "Year", "Place", "Everyday life on analogue film."),
-    ("street-portraits", "Untitled", "Street Portraits", "Year", "Place", "Meetings with people on the street. I want the portraits to feel real, not like studio portraits."),
-    ("street-photography", "Untitled", "Street Photography", "Year", "Place", "Moments as they happen on the street."),
-    ("overstyr", "Överstyr", "Documentary", "Year", "Place", "A documentary photo project."),
+    ("life-on-film", "Life on Film", "Life on Film", "", "", "Everyday life on analogue film."),
+    ("street-portraits", "Street Portraits", "Street Portraits", "", "", "Meetings with people on the street. I want the portraits to feel real, not like studio portraits."),
+    ("street-photography", "Street Photography", "Street Photography", "", "", "Moments as they happen on the street."),
+    ("documentary", "Documentary", "Documentary", "", "", "Documentary photography about people and places."),
 ]
 ONE = "One or two lines: what it is, where, for whom."
 FILMS = [
@@ -97,16 +99,12 @@ CV = [("Beaparachute", "2026–present", "Photography, video production and visu
       ("Freelance Photographer", "2026–present", "Portraits, events and photography assignments for local businesses and others. I’d like to work with artists, musicians, DJs, companies and organisers."),
       ("Järvsöfoto UF", "2025–2026", "Ran my own student company in photography and video: worked with customers and developed a visual style."),
       ("JärvsöLAN", "2025", "Communication, photography and video production for the event.")]
-GEAR = "Canon M50 + Sigma 30mm f/1.4"   # default for every picture/film
-# Per-file info. Key = file path (as in README). Leave out what you don't know.
-# "work/events/events-01.jpg": {"year": "2025", "gear": "Canon M50 + Sigma 30mm f/1.4", "about": "English text", "about_sv": "Svensk text"}
-INFO = {}
 
 # ---------------- HELPERS ----------------
 IMAGES, VIDEOS = [], []
 TEMPL = [[1.5,.8,.8],[.8,1.5,.67,1.5],[1.78,.75],[.8,.8,1.5,.67,1.0],[1.5,1.5],[.67,1.0,.8,1.5],[1.0,.75,.75],[.75,1.5,.75,1.33,.8],[2.0,.8],[.8,1.33,.8]]
 WID = [100, 100, 84, 100, 70, 100, 92]; GAP = [1, 5, 1, 1, 6, 1, 4]
-TR = {"Everyday life on analogue film.": "Vardagen på analog film.", "Meetings with people on the street. I want the portraits to feel real, not like studio portraits.": "Möten med människor på gatan. Porträtten ska kännas äkta, inte som studioporträtt.", "Moments as they happen on the street.": "Ögonblick som de ser ut på gatan.", "A documentary photo project.": "Ett dokumentärt fotoprojekt.", "Events": "Event", "Portraits": "Porträtt", "Live Music": "Livemusik", "Documentary": "Dokumentär", "Informational": "Informationsfilm",
+TR = {"Documentary photography about people and places.": "Dokumentärfoto om människor och platser.", "Commercial": "Kommersiellt", "Everyday life on analogue film.": "Vardagen på analog film.", "Meetings with people on the street. I want the portraits to feel real, not like studio portraits.": "Möten med människor på gatan. Porträtten ska kännas äkta, inte som studioporträtt.", "Moments as they happen on the street.": "Ögonblick som de ser ut på gatan.", "A documentary photo project.": "Ett dokumentärt fotoprojekt.", "Events": "Event", "Portraits": "Porträtt", "Live Music": "Livemusik", "Documentary": "Dokumentär", "Informational": "Informationsfilm",
       "Life on Film": "Life on Film", "Street Portraits": "Gatuporträtt", "Street Photography": "Gatufoto", "Untitled": "Utan titel",
       "Year": "År", "Place": "Plats", "Work": "Arbeten", "Personal Projects": "Egna projekt",
       "A few lines about this project.": "Några rader om projektet.", "Film title": "Filmtitel", "Event film title": "Filmtitel",
@@ -120,53 +118,49 @@ TR = {"Everyday life on analogue film.": "Vardagen på analog film.", "Meetings 
       "Communication, photography and video production for the event.": "Kommunikation, foto och videoproduktion i samband med eventet."}
 def tr(x): return TR.get(x, x) if LANG == "sv" else x
 
-def info(path, pos="b", kind="picture"):
-    d = INFO.get(path, {})
-    about = (d.get("about_sv") if LANG == "sv" else None) or d.get("about") or (L("A few lines about this picture.", "Några rader om bilden.") if kind == "picture" else L("A few lines about this film.", "Några rader om filmen."))
-    row = lambda k, v: f"<div><dt>{k}</dt><dd>{e(v)}</dd></div>"
-    return (f'<div class="info {pos}"><button class="info-btn" type="button" aria-expanded="false" aria-label="{L("Show info","Visa info")}"><span aria-hidden="true">i</span></button>'
-            f'<div class="info-card"><dl>{row(L("Date","Datum"), d.get("year", L("Year","År")))}{row(L("Gear","Utrustning"), d.get("gear", GEAR))}{row(L("About","Om"), about)}</dl></div></div>')
+PLR = [1.5, .8, .67, 1.33, .75, 1.5, 1.0, .8, 1.78, .67]   # shapes of the placeholders only
 
-def im(path, alt, r=1.5):
-    IMAGES.append(path); stem = path.rsplit(".", 1)[0]; c = "l" if r > 1.1 else "p" if r < .9 else "s"
-    fast = os.path.exists(os.path.join(ROOT, "assets/images", stem + "-1000.webp"))   # made by tools/optimize.py
-    img = f'<img src="{A}images/{path}" alt="{e(alt)}" loading="lazy" decoding="async">'
-    if fast: img = (f'<picture><source type="image/webp" srcset="{A}images/{stem}-1000.webp 1000w, {A}images/{stem}-2000.webp 2000w" sizes="(max-width:800px) 100vw, 50vw">{img}</picture>')
-    return (f'<figure class="f {c}" style="--r:{r}"><div class="frame" tabindex="0" role="button" aria-label="{e(alt)} ({L("open larger","öppna större")})">{img}'
-            f'<span class="note">Add image<br>assets/images/{path}</span></div>{info(path)}</figure>')
+def im(path, alt, r=1.5, idx=0):
+    IMAGES.append(path)
+    return (f'<figure class="f" data-i="{idx}" style="--r:{r}"><div class="frame" tabindex="0" role="button" aria-label="{e(alt)} ({L("open larger","öppna större")})">'
+            f'<img src="{A}images/{path}" alt="{e(alt)}" loading="lazy" decoding="async"><span class="note">Add image<br>assets/images/{path}</span></div></figure>')
 
 def flow(paths, alt, notes=None):
-    seed = sum(map(ord, paths[0])); out = []; i = k = 0
-    while i < len(paths):
-        t = TEMPL[(seed + k) % len(TEMPL)][:len(paths) - i]
-        w = WID[(seed + k * 3) % len(WID)]; ml = (100 - w) if k % 2 else 0
-        if len(t) == 1: w, ml = 62, (38 if k % 2 else 0)
-        al = "end" if (seed + k) % 3 == 0 else "start"
-        row = "".join(im(paths[i + j], f"{alt}: {L('photo','foto')} {i + j + 1}, Noah Edlund", r) for j, r in enumerate(t))
-        out.append(f'<div class="irow" style="--rw:{w}%;--rml:{ml}%;--al:{al};--rg:{GAP[(seed + k) % len(GAP)]}rem">{row}</div>')
-        if notes and k in notes: out.append(f'<p class="interlude">{e(notes[k])}</p>')
-        i += len(t); k += 1
-    return '<div class="flow">' + "".join(out) + "</div>"
+    return '<div class="masonry">' + "".join(im(p, f"{alt}: {L('photo','foto')} {n + 1}, Noah Edlund", PLR[n % len(PLR)], n) for n, p in enumerate(paths)) + "</div>"
 
 def rows(items):
     out = ""
     for href, title, meta, img in items:
-        d = ""
-        if img: IMAGES.append(img); d = f' data-img="{A}images/{img}"'
-        out += f'<a class="row" href="{href}"{d}><span class="rt">{e(title)}</span><span class="rm">{e(meta)}</span></a>'
+        d = th = ""
+        if img: IMAGES.append(img); d = f' data-img="{A}images/{img}"'; th = f'<img class="rt-img" src="{A}images/{img}" alt="" loading="lazy" decoding="async">'
+        out += f'<a class="row" href="{href}"{d}><span class="rt">{e(title)}</span>{th}<span class="rm">{e(meta)}</span></a>'
     return f'<nav class="index" aria-label="Index">{out}</nav>'
 
-def vid(path, poster, title, desc):
-    if path.startswith("yt:"):   # loads from YouTube only after the visitor presses play
-        IMAGES.append(poster)
-        inner = (f'<button class="yt" type="button" data-id="{path[3:]}" data-title="{e(title)}"><img src="{A}images/{poster}" alt="" loading="lazy">'
-                 f'<span class="yt-play">{L("Play","Spela")}</span><span class="yt-hint">{L("Loads from YouTube when you press play.","Laddas från YouTube när du trycker på play.")}</span>'
-                 f'<span class="note">Add image<br>assets/images/{poster}</span></button>')
-    else:
-        VIDEOS.append(path); IMAGES.append(poster)
-        inner = (f'<video controls preload="metadata" playsinline poster="{A}images/{poster}"><source src="{A}videos/{path}" type="video/mp4"></video>'
-                 f'<span class="note">Add video<br>assets/videos/{path}</span>')
-    return f'<article class="film"><div class="vid">{inner}{info(path, "t", "film")}</div><h3>{e(title)}</h3><p>{e(desc)}</p></article>'
+def pim(it, alt, idx=0):
+    r = round(it["w"] / it["h"], 3); i = it["id"]; src = f"{A}images/{i}"
+    img = (f'<img src="{src}-960.webp" srcset="{src}-480.webp 480w, {src}-960.webp 960w, {src}-1600.webp 1600w" sizes="(max-width:1100px) 50vw, 33vw" '
+           f'data-full="{src}-1600.webp" alt="{e(alt)}" width="{it["w"]}" height="{it["h"]}" loading="lazy" decoding="async">')
+    return (f'<figure class="f" data-i="{idx}" style="--r:{r}"><div class="frame" tabindex="0" role="button" aria-label="{e(alt)} ({L("open larger","öppna större")})">{img}'
+            f'<span class="note">Missing image<br>{i}</span></div></figure>')
+
+def real_flow(items, alt, key):
+    """Masonry: pictures stay in the exact order of data/photos.json (the page script puts each one in the shortest column)."""
+    return '<div class="masonry">' + "".join(pim(it, f"{alt}: {L('photo','foto')} {n + 1}, Noah Edlund", n) for n, it in enumerate(items)) + "</div>"
+
+def gallery(key, alt, n):
+    if PH.get(key): return real_flow(PH[key], alt, key)
+    return flow([f"{key}/{key.split('/')[-1]}-{i:02d}.jpg" for i in range(1, n + 1)], alt)
+
+def _json(name):
+    p = os.path.join(ROOT, "data", name); return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
+COVERS, THUMBS = _json("covers.json"), _json("thumbs.json")   # optional: {"work/portraits": "work/portraits/portraits-005"}  /  {"bike-festival": "work/events/events-010"}
+
+def cover(key, fb):
+    """Menu hover picture: your own assets/images/<gallery>/cover.jpg if it exists, else the one named in data/covers.json, else the first picture."""
+    for ext in ("jpg", "jpeg", "png", "webp"):
+        if os.path.exists(os.path.join(ROOT, "assets/images", f"{key}/cover.{ext}")): return f"{key}/cover.{ext}"
+    its = PH.get(key) or []; pick = next((x for x in its if x["id"] == COVERS.get(key)), its[0] if its else None)
+    return f'{pick["id"]}-960.webp' if pick else fb
 
 def socials():
     return (f'<p class="soc"><a href="{INSTAGRAM}" target="_blank" rel="me noopener">Instagram</a> <a href="{YOUTUBE}" target="_blank" rel="me noopener">YouTube</a> '
@@ -212,14 +206,13 @@ def page(fn, title, desc, body, home=False, cls="", person=False):
 
 head = lambda t: f'<section class="pagehead"><h1>{e(t)}</h1></section>'
 SEO = {"events": ("Event photographer in Hälsingland", "Eventfotograf i Hälsingland"), "portraits": ("Portrait photographer in Hälsingland", "Porträttfotograf i Hälsingland"),
-       "live-music": ("Live music and concert photography", "Konsertfotograf och livemusikfoto")}
+       "live-music": ("Live music and concert photography", "Konsertfotograf och livemusikfoto"),
+       "commercial": ("Commercial photography in Hälsingland", "Kommersiell fotografering i Hälsingland")}
 BY = L("Photographs by Noah Edlund (thelocalsuedi.), Hälsingland, Sweden.", "Bilder av Noah Edlund (thelocalsuedi.), Hälsingland.")
 AV = AVAILABLE[LANG]; AVP = f'<p class="avail">{e(AV)}</p>' if AV else ""
 
 # ---------------- PAGES ----------------
-VIDEOS.append("intro/intro-loop.mp4"); IMAGES.append("home/intro-poster.jpg")
-hero = (f'<section class="hero"><video autoplay muted loop playsinline preload="metadata" poster="{A}images/home/intro-poster.jpg"><source src="{A}videos/intro/intro-loop.mp4" type="video/mp4"></video>'
-        f'<span class="note">Add intro video<br>assets/videos/intro/intro-loop.mp4</span><h1>{SITE}</h1><p>{L("Photographer and filmmaker, Hälsingland, Sweden.","Fotograf och filmare i Hälsingland.")}</p></section>')
+hero = f'<section class="hero"><h1>{SITE}</h1><p>{L("Photographer and filmmaker, Hälsingland, Sweden.","Fotograf och filmare i Hälsingland.")}</p></section>'
 intro = (f'<section class="note-block"><p>{L("I’m Noah. I photograph and film people, music and the places around me in Hälsingland, on digital and on film.","Jag heter Noah. Jag fotar och filmar människor, musik och platserna runt omkring mig i Hälsingland, både digitalt och på film.")}</p>'
          f'<p>{L("I work at Beaparachute and take freelance jobs: portraits, events and video for local businesses.","Jag jobbar på Beaparachute och tar frilansuppdrag: porträtt, event och video åt lokala företag.")} '
          f'<a href="about.html">{L("About me","Om mig")}</a> / <a href="video.html#documentary">{L("Watch my documentary","Se min dokumentär")}</a></p>{AVP}</section>')
@@ -230,27 +223,97 @@ page("index", L("Noah Edlund – Photographer and filmmaker in Hälsingland | th
      hero + intro + f'<section class="home-index">{home_idx}</section>', home=True, cls="home")
 
 page("work", L("Photography: events, portraits and live music", "Fotografi: event, porträtt och livemusik"), BY,
-     head(tr("Work")) + rows([(f"work-{s}.html", tr(t), "", f"work/{s}/cover.jpg") for s, t in WORK]))
+     head(tr("Work")) + rows([(f"work-{s}.html", tr(t), "", cover(f"work/{s}", f"work/{s}/cover.jpg")) for s, t in WORK]))
 for s, t in WORK:
     page(f"work-{s}", L(*SEO[s]), f"{L(*SEO[s])}. {BY}", f'<section class="pagehead"><h1>{tr(t)}</h1><p class="back"><a href="work.html">{tr("Work")}</a></p></section>'
-         + flow([f"work/{s}/{s}-{i:02d}.jpg" for i in range(1, 15)], L(*SEO[s])))
+         + gallery(f"work/{s}", L(*SEO[s]), 14))
 
-groups = {}
-for p in PROJECTS: groups.setdefault(p[2], []).append(p)
-body = head(tr("Personal Projects"))
-for g, ps in groups.items():
-    body += f'<section class="group"><h2>{e(tr(g))}</h2>' + rows([(f"project-{p[0]}.html", tr(p[1]), tr(p[3]), f"projects/{p[0]}/cover.jpg") for p in ps]) + '</section>'
+known = {p[0] for p in PROJECTS}
+for k in PH:
+    if k.startswith("projects/") and k.split("/", 1)[1] not in known:
+        sl = k.split("/", 1)[1]; PROJECTS.append((sl, sl.replace("-", " ").title(), "Documentary", "", "", ""))
+body = head(tr("Personal Projects")) + rows([(f"project-{p[0]}.html", tr(p[1]), tr(p[3]), cover(f"projects/{p[0]}", f"projects/{p[0]}/cover.jpg")) for p in PROJECTS])
 page("projects", L("Personal projects: street photography, life on film, documentary", "Egna projekt: gatufoto, life on film, dokumentär"), BY, body)
 for s, t, g, yr, pl, txt in PROJECTS:
-    hd = (f'<section class="pagehead project-head"><h1>{e(tr(t))}</h1><div><p>{e(tr(txt))}</p><p class="meta">{e(tr(g))}<br>{e(tr(yr))}, {e(tr(pl))}</p>'
+    meta = (e(tr(g)) if g != t else "") + (("<br>" if g != t else "") + e(", ".join(x for x in (tr(yr), tr(pl)) if x)) if (yr or pl) else "")
+    hd = (f'<section class="pagehead project-head"><h1>{e(tr(t))}</h1><div>' + (f"<p>{e(tr(txt))}</p>" if txt else "") + (f'<p class="meta">{meta}</p>' if meta else "") +
           f'<p class="back"><a href="projects.html">{tr("Personal Projects")}</a></p></div></section>')
-    page(f"project-{s}", f"{tr(t)} ({tr(g)})", f"{tr(t)}: {tr(g)}. {BY}", hd + flow([f"projects/{s}/{s}-{i:02d}.jpg" for i in range(1, 13)], tr(t)))
+    page(f"project-{s}", tr(t) if g == t else f"{tr(t)} ({tr(g)})", f"{tr(t)}: {tr(g)}. {BY}", hd + gallery(f"projects/{s}", tr(t), 12))
 
-vb = '<section class="pagehead"><h1>Video</h1><p class="jump">' + " ".join(f'<a href="#{s}">{tr(t)}</a>' for s, t, _ in FILMS) + '</p></section>'
-for s, t, fl in FILMS:
-    vb += f'<section class="vsec" id="{s}"><h2>{tr(t)}</h2>' + "".join(vid(a if a.startswith("yt:") else f"film/{s}/{a}.mp4", f"film/{s}/{a.replace(':', '-')}-poster.jpg", tr(b), tr(c)) for a, b, c in fl) + "</section>"
-page("video", L("Video: event films, documentary and company videos", "Video: eventfilmer, dokumentär och företagsfilm"),
-     L("Films by Noah Edlund (thelocalsuedi.): event films, documentary and videos for companies in Hälsingland, Sweden.", "Filmer av Noah Edlund (thelocalsuedi.): eventfilmer, dokumentär och företagsfilm i Hälsingland."), vb)
+# ---------------- VIDEO: curated film portfolio (descriptions hidden until "Read description") ----------------
+FE = ("Filming & editing", "Filmning & klippning")
+def V(g, id, src, title, role, place, year, en, sv): return dict(g=g, id=id, src=src, title=title, role=role, place=place, year=year, en=en, sv=sv)
+FILMS_ = [
+ V("feature", "rehnstroms", ("yt", "arH-8EXF31E"), "Rehnströms: a camera store in transition", ("Concept, planning, filming, directing & editing", "Idé, planering, filmning, regi & klippning"), "", "",
+   "A documentary about the people, history and everyday life behind Rehnströms, a camera store in an industry that keeps changing. Independently produced, from concept and planning to filming and final edit.",
+   "En dokumentär om människorna, historien och vardagen bakom Rehnströms, en kamerabutik i en bransch som ständigt förändras. Producerad på egen hand, från idé och planering till filmning och slutklipp."),
+ V("event", "uf-gavleborg", ("yt", "oKfWtkiNzWI"), "Ung Företagsamhet Gävleborg: UF event", FE, "Bollnäs", "",
+   "A promotional film from a regional UF event in Bollnäs, where young businesses from across Gävleborg gathered for exhibitions, competitions, presentations and activities. Made for Ung Företagsamhet Gävleborg.",
+   "En promotionfilm från ett regionalt UF-event i Bollnäs, där unga företag från hela Gävleborg samlades för utställningar, tävlingar, presentationer och aktiviteter. Gjord för Ung Företagsamhet Gävleborg."),
+ V("event", "bike-festival", ("ig", "DbgyoDkOb13"), "Järvsö Bike Festival: event edit", FE, "Järvsö", "",
+   "A fast edit from Järvsö Bike Festival, filmed and edited by me and later shared on the festival’s own channels.",
+   "En snabb eventfilm från Järvsö Bike Festival, filmad och klippt av mig och senare delad på festivalens egna kanaler."),
+ V("event", "lake-jump", ("ig", "Dbh8zyCOc4c"), "Lake Jump: Järvsö 2026", FE, "Järvsö", "2026",
+   "A summer event where mountain bikers gathered to jump into the lake. Fast, with a lot of movement and spontaneous moments.",
+   "Ett sommarevent där mountainbikecyklister samlades för att hoppa i sjön. Snabbt, med mycket rörelse och spontana ögonblick."),
+ V("event", "redbull", ("ig", "DbgzTxNOzz0"), "Red Bull: Järvsö Bike Festival", FE, "Järvsö", "",
+   "A spontaneous edit built around a rider handing out Red Bull cans during Järvsö Bike Festival. A simple idea turned into a short film.",
+   "En spontan film byggd kring en cyklist som delar ut Red Bull-burkar under Järvsö Bike Festival. En enkel idé som blev en kort film."),
+ V("event", "redbull-bts", ("ig", "DbsbrcRujua"), "Behind the scenes: Red Bull edit", None, "Järvsö", "",
+   "Behind the scenes of the Red Bull edit, showing some of the process behind the finished film.",
+   "Bakom kulisserna av Red Bull-filmen, med en titt på en del av processen bakom den färdiga filmen."),
+ V("live", "blessed-insanity", ("ig", "Da_FULTO6au"), "Blessed Insanity: live", FE, "", "",
+   "A commissioned live film of Blessed Insanity’s performance, made as a visual edit for the band.",
+   "En beställd livefilm av Blessed Insanitys spelning, gjord som en visuell klippning åt bandet."),
+ V("live", "electric-feelgood", ("ig", "DMnTS4Bts04"), "Electric Feelgood: live at Rosehills", FE, "Rosehills", "2025",
+   "A personal live project filmed at Rosehills in 2025. I brought my camera, filmed the band and cut the footage into a short film.",
+   "Ett eget liveprojekt filmat på Rosehills 2025. Jag tog med kameran, filmade bandet och klippte materialet till en kort film."),
+ V("personal", "fjarilshuset", ("ig", "DJNbZHpKOmG"), "Fjärilshuset: Stockholm", FE, "Stockholm", "",
+   "A short personal film made during a visit to Fjärilshuset in Stockholm. I brought my camera and turned the visit into an edit.",
+   "En kort personlig film gjord under ett besök på Fjärilshuset i Stockholm. Jag tog med kameran och gjorde besöket till en klippning."),
+ V("edit", "slotboythim", ("yt", "C_gGPVL7eAA"), "Slotboythim: video edit", ("Video editing", "Videoklippning"), "", "",
+   "An editing project where I took on the post-production of an entire video, working in a visual style and editing approach that was new to me.",
+   "Ett klippprojekt där jag tog hand om hela efterbearbetningen av en video, i en visuell stil och klippmetod som var ny för mig."),
+]
+# Thumbnails: (1) your own frame in assets/images/video/<id>.jpg, else (2) a photo from the SAME event/band in your gallery, else (3) a typographic card.
+THUMB_SERIES = {"bike-festival": ("work/events", "jarvsobikefestival-jarvso"), "uf-gavleborg": ("work/events", "ufmassa-ungforetagsamhet-bollnas"),
+                "blessed-insanity": ("work/live-music", "blessedinsanity-livemusik-rosehills-ljusdal-event"), "electric-feelgood": ("work/live-music", "livemusik-electricfeelgood-event")}
+KIND = {"feature": ("Documentary", "Dokumentär"), "event": ("Event", "Event"), "live": ("Live music", "Livemusik"), "personal": ("Personal", "Personligt"), "edit": ("Editing", "Klippning")}
+def thumb(v):
+    i = v["id"]; own = next((f"video/{i}.{x}" for x in ("jpg", "jpeg", "png", "webp") if os.path.exists(os.path.join(ROOT, "assets/images", f"video/{i}.{x}"))), None)
+    if own: return own, False
+    pid = THUMBS.get(i)
+    if not pid and i in THUMB_SERIES: pid = next((x["id"] for x in PH.get(THUMB_SERIES[i][0], []) if x.get("series") == THUMB_SERIES[i][1]), None)
+    return (f"{pid}-960.webp" if pid else None), True
+
+def vcard(v):
+    yt = v["src"][0] == "yt"; sid = v["src"][1]; IMAGES.append(f"video/{v['id']}.jpg")
+    link = f"https://youtu.be/{sid}" if yt else f"https://www.instagram.com/reel/{sid}/"
+    meta = " · ".join(x for x in [L(*v["role"]) if v["role"] else "", v["place"], v["year"]] if x)
+    src_name = "YouTube" if yt else "Instagram"; tp, txt = thumb(v)
+    main, _, sub = v["title"].partition(":")
+    im_ = f'<img src="{A}images/{tp}" alt="" loading="lazy" decoding="async">' if tp else ""
+    post = (f'<div class="vposter{" on-img" if tp else ""}" aria-hidden="true"><span class="vp-k">{L(*KIND[v["g"]])}</span>'
+            f'<span class="vp-t">{e(main)}</span>' + (f'<span class="vp-s">{e(sub.strip())}</span>' if sub.strip() else "") + '</div>') if txt else ""
+    return (f'<article class="vc {"h" if yt else "v"}" id="{v["id"]}"><div class="vframe">{im_}{post}'
+            f'<button class="vplay" type="button" data-k="{v["src"][0]}" data-id="{sid}" data-title="{e(v["title"])}"><span class="vplay-t">{L("Play","Spela")}</span>'
+            f'<span class="vplay-h">{L("Loads from " + src_name + " when you press play.", "Laddas från " + src_name + " när du trycker på play.")}</span></button></div>'
+            f'<div class="vmeta"><h3>{e(v["title"])}</h3>' + (f'<p class="vsub">{e(meta)}</p>' if meta else "") +
+            f'<button class="vmore" type="button" aria-expanded="false" aria-controls="d-{v["id"]}">{L("Read description","Läs beskrivning")}</button>'
+            f'<div class="vdesc" id="d-{v["id"]}"><div><p>{e(v["en"] if LANG == "en" else v["sv"])}</p></div></div>'
+            f'<a class="vlink" href="{link}" target="_blank" rel="noopener">{L("Watch on","Se på")} {src_name}</a></div></article>')
+byid = {v["id"]: v for v in FILMS_}; grp = lambda g: [v for v in FILMS_ if v["g"] == g]
+ev = "".join(vcard(byid[i]) for i in ("uf-gavleborg", "bike-festival", "lake-jump"))
+pair = f'<div class="vpair" role="group" aria-label="Red Bull">{vcard(byid["redbull"])}{vcard(byid["redbull-bts"])}</div>'
+vb = ('<section class="pagehead"><h1>Video</h1><p class="jump"><a href="#documentary">' + tr("Documentary") + f'</a> <a href="#events">{L("Events","Event")}</a> <a href="#live">{tr("Live Music")}</a> '
+      f'<a href="#personal">{L("Personal","Personligt")}</a> <a href="#editing">{L("Editing","Klippning")}</a></p></section>'
+      f'<section class="vsec vfeat" id="documentary"><h2>{tr("Documentary")}</h2>{vcard(byid["rehnstroms"])}</section>'
+      f'<section class="vsec" id="events"><h2>{L("Events and promotion","Event och promotion")}</h2><div class="vrow">{ev}{pair}</div></section>'
+      f'<section class="vsec" id="live"><h2>{tr("Live Music")}</h2><div class="vrow">{"".join(vcard(v) for v in grp("live"))}</div></section>'
+      f'<section class="vsec" id="personal"><h2>{L("Personal","Personligt")}</h2><div class="vrow">{vcard(byid["fjarilshuset"])}</div></section>'
+      f'<section class="vsec" id="editing"><h2>{L("Editing","Klippning")}</h2><div class="vrow">{vcard(byid["slotboythim"])}</div></section>')
+page("video", L("Video: documentary, event films and live music", "Video: dokumentär, eventfilmer och livemusik"),
+     L("Films by Noah Edlund (thelocalsuedi.): documentary, event films, live music and edits, Hälsingland, Sweden.", "Filmer av Noah Edlund (thelocalsuedi.): dokumentär, eventfilmer, livemusik och klippning, Hälsingland."), vb)
 
 cvh = "".join(f'<div class="cv-row"><h3>{e(tr(n))}</h3><span>{tr(y)}</span><p>{e(tr(x))}</p></div>' for n, y, x in CV)
 what = "".join(f'<div class="cv-row"><h3>{n}</h3><p>{x}</p></div>' for n, x in [
@@ -259,11 +322,18 @@ what = "".join(f'<div class="cv-row"><h3>{n}</h3><p>{x}</p></div>' for n, x in [
     (L("Personal projects", "Egna projekt"), L("Street photography, street portraits, life on film and documentary.", "Gatufoto, gatuporträtt, life on film och dokumentär."))])
 edu = f'<div class="cv-row"><h3>Järvsögymnasiet</h3><span>2023–2026</span><p>{L("Aesthetic programme, media specialisation. Graduated 2026.","Estetiska programmet, inriktning media. Tog studenten 2026.")}</p></div>'
 gear = "".join(f'<div class="cv-row"><h3>{n}</h3><p>{x}</p></div>' for n, x in [
-    (L("Digital", "Digitalt"), "Canon M50, Sigma 30mm f/1.4"), (L("Analogue", "Analogt"), "Mamiya RB67, Canon AE-1, Yashica-C")])
+    (L("Digital", "Digitalt"), "Canon M50, Sigma 30mm f/1.4 DC DN"),
+    (L("Analogue", "Analogt"), L("Mamiya RB67 Professional S with Mamiya Sekor 90mm f/3.8, Canon AE-1, Yashica-C", "Mamiya RB67 Professional S med Mamiya Sekor 90mm f/3.8, Canon AE-1, Yashica-C")),
+    (L("Flash", "Blixt"), "Godox V480 TTL")])
+PORT_R = "4/5"
+try:
+    from PIL import Image as _I
+    _w, _h = _I.open(os.path.join(ROOT, "assets/images/about/noah-portrait.jpg")).size; PORT_R = f"{_w}/{_h}"
+except Exception: pass
 IMAGES.append("about/noah-portrait.jpg")
 page("about", L("About Noah Edlund, photographer and filmmaker in Hälsingland", "Om Noah Edlund, fotograf och filmare i Hälsingland"),
      L("Noah Edlund (thelocalsuedi.) is a photographer and filmmaker from Hälsingland, Sweden. Experience, services and contact details.", "Noah Edlund (thelocalsuedi.) är fotograf och filmare från Hälsingland. Erfarenhet, tjänster och kontaktuppgifter."),
-     f'''<section class="about"><div class="portrait"><div class="frame" style="--r:4/5"><img src="{A}images/about/noah-portrait.jpg" alt="{L("Portrait of Noah Edlund, photographer","Porträtt av Noah Edlund, fotograf")}">
+     f'''<section class="about"><div class="portrait"><div class="frame" style="--r:{PORT_R}"><img src="{A}images/about/noah-portrait.jpg" alt="{L("Portrait of Noah Edlund, photographer","Porträtt av Noah Edlund, fotograf")}">
 <span class="note">Portrait placeholder<br>assets/images/about/noah-portrait.jpg</span></div></div>
 <div class="about-text"><h1>Noah Edlund</h1><p class="lead">{L("Photographer and filmmaker from Hälsingland, Sweden.","Fotograf och filmare från Hälsingland.")}</p>
 <p>{L("I photograph and film people, places and situations that haven’t been arranged. What happens in front of the camera interests me more than what I can set up, and a picture should say something, not just be technically right.","Jag fotar och filmar människor, platser och situationer som inte är tillrättalagda. Det som händer framför kameran intresserar mig mer än det jag kan arrangera, och en bild ska säga något, inte bara vara tekniskt rätt.")}</p>
@@ -283,12 +353,12 @@ stat_sv = ("<h2>Cookies och statistik</h2><p>Sidan använder inga cookies och in
 page("privacy", L("Privacy and contact details", "Integritet och kontaktuppgifter"), L("Contact details, privacy information and copyright for thelocalsuedi.", "Kontaktuppgifter, integritetsinformation och upphovsrätt för thelocalsuedi."),
      head(L("Privacy and contact", "Integritet och kontakt")) + '<section class="legal">' + L(
      f"""<h2>Who runs this site</h2><p>Noah Edlund (thelocalsuedi.)<br>[PO box or c/o address to be added], Sweden<br>Email: <a href="mailto:{EMAIL}">{EMAIL}</a></p>{stat_en}
-<h2>Videos</h2><p>YouTube videos only load after you press play. Then YouTube (Google) receives data such as your IP address, under their own privacy policy.</p>
+<h2>Videos</h2><p>YouTube and Instagram videos only load after you press play. Then YouTube (Google) or Instagram (Meta) receives data such as your IP address, under their own privacy policies. Every film also has a direct link to the original.</p>
 <h2>People in my pictures</h2><p>My photos and films show real people. If you appear in something and want it removed, email me and I’ll take care of it.</p>
 <h2>If you email me</h2><p>I use your message and email address only to reply to you. You can ask me to delete them. Complaints about how I handle personal data can go to the Swedish Authority for Privacy Protection (IMY), imy.se.</p>
 <h2>Copyright</h2><p>All photographs, films and text on this site are © Noah Edlund. Please don’t copy or reuse them without asking.</p>""",
      f"""<h2>Vem som driver sidan</h2><p>Noah Edlund (thelocalsuedi.)<br>[Postbox eller c/o-adress läggs till], Sverige<br>E-post: <a href="mailto:{EMAIL}">{EMAIL}</a></p>{stat_sv}
-<h2>Videor</h2><p>YouTube-videor laddas först när du trycker på play. Då får YouTube (Google) uppgifter som din IP-adress, enligt deras egen integritetspolicy.</p>
+<h2>Videor</h2><p>YouTube- och Instagram-videor laddas först när du trycker på play. Då får YouTube (Google) eller Instagram (Meta) uppgifter som din IP-adress, enligt deras egna integritetspolicyer. Varje film har också en direktlänk till originalet.</p>
 <h2>Personer i mina bilder</h2><p>Mina foton och filmer visar riktiga människor. Om du syns i något och vill att det tas bort, mejla mig så ordnar jag det.</p>
 <h2>Om du mejlar mig</h2><p>Jag använder ditt meddelande och din e-postadress bara för att svara dig. Du kan be mig radera dem. Klagomål på hur jag hanterar personuppgifter kan skickas till Integritetsskyddsmyndigheten (IMY), imy.se.</p>
 <h2>Upphovsrätt</h2><p>Alla foton, filmer och texter på sidan är © Noah Edlund. Kopiera eller återanvänd dem inte utan att fråga.</p>""") + "</section>")
@@ -306,16 +376,21 @@ Static site in two languages: `/en/` and `/sv/`. The start page `index.html` sen
 4. Add `assets/images/og/og-image.jpg` (1200x630), the picture shown when the link is shared.
 5. Search Console: add the site and submit `sitemap.xml`. Put the site link in your Instagram, YouTube and TikTok bios.
 
-## Fast-loading pictures
-1. Put your full-size originals in `assets/originals/` using the same sub-path as the list below (e.g. `assets/originals/work/events/events-01.jpg`).
-2. `pip install pillow`, then `python3 tools/optimize.py`. It writes the web sizes into `assets/images/` (JPG and WebP at 1000 and 2000 px) and removes location data (EXIF) from the pictures.
-3. `python3 build.py` again. Pages use the small WebP files automatically where they exist; frames already reserve their space, so nothing jumps while loading.
+## Photos from Google Drive
+1. Download the Drive folder "Hemsida bilder." (right-click > Download), unzip it into `assets/originals/`.
+2. `pip install pillow`, then `python3 tools/import_photos.py`, then `python3 build.py`.
+3. The folder decides the gallery; file names are never shown. Pictures are NOT sorted by sharpness or contrast. Within a gallery they stay grouped by series (the file-name prefix) and follow the number at the end of each file name. Series are alphabetical unless you list your own order in `data/order.json` (see the top of tools/import_photos.py).
+4. `data/photos.json` is the single source of truth for what is shown and in which order. Edit it by hand if you want a different order.
+5. Originals stay untouched in `assets/originals/` (git-ignored). The generated web sizes go to `assets/images/`.
 
-## Lightbox
-Click a picture to open it large. Arrows, arrow keys, swipe to browse; Esc, the cross or a click outside closes. It shows Date, Gear and About.
+## Menu hover pictures
+Each gallery shows a picture when you hover its name in the lists. Put your own `assets/images/<gallery>/cover.jpg` (for example `assets/images/work/portraits/cover.jpg`) to choose it. Without a file, `data/covers.json` ({{"work/portraits": "work/portraits/portraits-005"}}) or else the first picture is used.
 
-## Info on every picture and film
-Defaults: gear is `GEAR` in build.py. To set real info, add the file to `INFO` in build.py (key = file path from the lists below), then run `python3 build.py`.
+## Film thumbnails
+Order of choice: your own frame `assets/images/video/<id>.jpg` (ids in the list below; `python3 tools/make_posters.py` takes the first frame from videos in `assets/originals/video/`), otherwise a photo from the same event/band in your gallery (bike-festival, uf-gavleborg, blessed-insanity, electric-feelgood; change with `data/thumbs.json`), otherwise a typographic card. Nothing is invented.
+
+## Masonry galleries and lightbox
+Pictures keep their proportions and fill 2, 3 or 4 columns depending on screen width, in the order of `data/photos.json`. Click a picture to open it large; arrows, arrow keys or swipe to browse; Esc closes.
 
 ## Availability line
 `AVAILABLE` in build.py (one text per language). Empty text hides the line.

@@ -122,24 +122,13 @@ TR = {"Documentary photography about people and places.": "Dokumentärfoto om m�
       "Communication, photography and video production for the event.": "Kommunikation, foto och videoproduktion i samband med eventet."}
 def tr(x): return TR.get(x, x) if LANG == "sv" else x
 
-def info(path, pos="b", kind="picture", d=None):
-    d = dict(d or {}); d.update(INFO.get(path, {}))
-    if GEAR and not d.get("gear"): d["gear"] = GEAR
-    ab = (d.get("about_sv") if LANG == "sv" else None) or d.get("about")
-    rws = [(L("Date", "Datum"), d.get("year")), (L("Gear", "Utrustning"), d.get("gear")), (L("About", "Om"), ab)]
-    rws = [(k, v) for k, v in rws if v]
-    if not rws: return ""   # nothing known = no icon (nothing is invented)
-    body = "".join(f"<div><dt>{k}</dt><dd>{e(v)}</dd></div>" for k, v in rws)
-    return (f'<div class="info {pos}"><button class="info-btn" type="button" aria-expanded="false" aria-label="{L("Show info","Visa info")}"><span aria-hidden="true">i</span></button>'
-            f'<div class="info-card"><dl>{body}</dl></div></div>')
-
 def im(path, alt, r=1.5):
     IMAGES.append(path); stem = path.rsplit(".", 1)[0]; c = "l" if r > 1.1 else "p" if r < .9 else "s"
     fast = os.path.exists(os.path.join(ROOT, "assets/images", stem + "-1000.webp"))   # made by tools/optimize.py
     img = f'<img src="{A}images/{path}" alt="{e(alt)}" loading="lazy" decoding="async">'
     if fast: img = (f'<picture><source type="image/webp" srcset="{A}images/{stem}-1000.webp 1000w, {A}images/{stem}-2000.webp 2000w" sizes="(max-width:800px) 100vw, 50vw">{img}</picture>')
     return (f'<figure class="f {c}" style="--r:{r}"><div class="frame" tabindex="0" role="button" aria-label="{e(alt)} ({L("open larger","öppna större")})">{img}'
-            f'<span class="note">Add image<br>assets/images/{path}</span></div>{info(path)}</figure>')
+            f'<span class="note">Add image<br>assets/images/{path}</span></div></figure>')
 
 def flow(paths, alt, notes=None):
     seed = sum(map(ord, paths[0])); out = []; i = k = 0
@@ -167,7 +156,7 @@ def pim(it, alt):
     img = (f'<picture><source type="image/webp" srcset="{src}-480.webp 480w, {src}-1000.webp 1000w, {src}-2000.webp 2000w" sizes="(max-width:800px) 100vw, 50vw">'
            f'<img src="{src}.jpg" alt="{e(alt)}" width="{it["w"]}" height="{it["h"]}" loading="lazy" decoding="async"></picture>')
     return (f'<figure class="f {c}" style="--r:{r}"><div class="frame" tabindex="0" role="button" aria-label="{e(alt)} ({L("open larger","öppna större")})">{img}'
-            f'<span class="note">Missing image<br>{i}</span></div>{info(i + ".jpg", d={"gear": it.get("gear", "")})}</figure>')
+            f'<span class="note">Missing image<br>{i}</span></div></figure>')
 
 def real_flow(items, alt, key):
     """Rows built from the real picture shapes: 2-5 per row, varied widths, no lonely last picture."""
@@ -201,7 +190,7 @@ def vid(path, poster, title, desc):
         VIDEOS.append(path); IMAGES.append(poster)
         inner = (f'<video controls preload="metadata" playsinline poster="{A}images/{poster}"><source src="{A}videos/{path}" type="video/mp4"></video>'
                  f'<span class="note">Add video<br>assets/videos/{path}</span>')
-    return f'<article class="film"><div class="vid">{inner}{info(path, "t", "film")}</div><h3>{e(title)}</h3><p>{e(desc)}</p></article>'
+    return f'<article class="film"><div class="vid">{inner}</div><h3>{e(title)}</h3><p>{e(desc)}</p></article>'
 
 def socials():
     return (f'<p class="soc"><a href="{INSTAGRAM}" target="_blank" rel="me noopener">Instagram</a> <a href="{YOUTUBE}" target="_blank" rel="me noopener">YouTube</a> '
@@ -252,10 +241,14 @@ SEO = {"events": ("Event photographer in Hälsingland", "Eventfotograf i Hälsin
 BY = L("Photographs by Noah Edlund (thelocalsuedi.), Hälsingland, Sweden.", "Bilder av Noah Edlund (thelocalsuedi.), Hälsingland.")
 AV = AVAILABLE[LANG]; AVP = f'<p class="avail">{e(AV)}</p>' if AV else ""
 
+hero = (
+    f'<section class="hero">'
+    f'<h1>{SITE}</h1>'
+    f'<p>{L("Photographer and filmmaker, Hälsingland, Sweden.","Fotograf och filmare i Hälsingland.")}</p>'
+    f'</section>'
+)
+
 # ---------------- PAGES ----------------
-VIDEOS.append("intro/intro-loop.mp4"); IMAGES.append("home/intro-poster.jpg")
-hero = (f'<section class="hero"><video autoplay muted loop playsinline preload="metadata" poster="{A}images/home/intro-poster.jpg"><source src="{A}videos/intro/intro-loop.mp4" type="video/mp4"></video>'
-        f'<span class="note">Add intro video<br>assets/videos/intro/intro-loop.mp4</span><h1>{SITE}</h1><p>{L("Photographer and filmmaker, Hälsingland, Sweden.","Fotograf och filmare i Hälsingland.")}</p></section>')
 intro = (f'<section class="note-block"><p>{L("I’m Noah. I photograph and film people, music and the places around me in Hälsingland, on digital and on film.","Jag heter Noah. Jag fotar och filmar människor, musik och platserna runt omkring mig i Hälsingland, både digitalt och på film.")}</p>'
          f'<p>{L("I work at Beaparachute and take freelance jobs: portraits, events and video for local businesses.","Jag jobbar på Beaparachute och tar frilansuppdrag: porträtt, event och video åt lokala företag.")} '
          f'<a href="about.html">{L("About me","Om mig")}</a> / <a href="video.html#documentary">{L("Watch my documentary","Se min dokumentär")}</a></p>{AVP}</section>')
