@@ -3,7 +3,7 @@
 import os, sys, json, glob, subprocess
 from html import escape as e
 ROOT = os.path.dirname(os.path.abspath(__file__))
-SITE_URL = "https://YOUR-USERNAME.github.io/YOUR-REPO"   # TODO: real address, no trailing slash
+SITE_URL = "https://noahedlund007-boop.github.io/Thelocalsuedi"   # TODO: real address, no trailing slash
 EMAIL = "Noahedlund007@gmail.com"
 INSTAGRAM = "https://www.instagram.com/thelocalsuedi/"
 YOUTUBE = "https://www.youtube.com/@thelocalsuedi"
